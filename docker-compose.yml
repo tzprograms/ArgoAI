@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  go-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "8080:8080"
+    environment:
+      - KUBECONFIG=/root/.kube/config
+    volumes:
+      - ${HOME}/.kube:/root/.kube:ro
+    command:
+      - /go-service
+      - --addr=:8080
+      - --agent-url=http://agent:8081
+    depends_on:
+      - agent
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    ports:
+      - "8081:8081"
+    environment:
+      - GO_SERVICE_URL=http://go-service:8080
+      - RAG_INDEX_PATH=/rag/vector_db
+      - PORT=8081
+    volumes:
+      # Mount the extracted RAG data (run 'make extract-rag' first)
+      - ./rag_data:/rag:ro

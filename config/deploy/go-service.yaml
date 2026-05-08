@@ -1,0 +1,197 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-agent-go
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-go
+    app.kubernetes.io/component: api
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-agent-go
+  labels:
+    app.kubernetes.io/name: argocd-agent-go
+rules:
+  # Core resources (NO secrets - security risk)
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "configmaps", "services", "serviceaccounts", "persistentvolumeclaims", "persistentvolumes", "resourcequotas"]
+    verbs: ["get", "list", "watch"]
+  # Workload resources
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  # ArgoCD Application CRs
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications", "applicationsets", "appprojects"]
+    verbs: ["get", "list", "watch"]
+  # Network resources
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["ingresses", "networkpolicies"]
+    verbs: ["get", "list", "watch"]
+  # Storage resources
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  # RBAC resources (read-only for diagnostics)
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+    verbs: ["get", "list", "watch"]
+  # Scaling resources
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+  # OpenShift Route (if available)
+  - apiGroups: ["route.openshift.io"]
+    resources: ["routes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-agent-go
+  labels:
+    app.kubernetes.io/name: argocd-agent-go
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-agent-go
+subjects:
+  - kind: ServiceAccount
+    name: argocd-agent-go
+    namespace: argocd-agent
+---
+# Role for reading LLM API keys secret in the agent namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-agent-llm-keys-reader
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-go
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["argocd-agent-llm-keys"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-agent-llm-keys-reader
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-go
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-agent-llm-keys-reader
+subjects:
+  - kind: ServiceAccount
+    name: argocd-agent-go
+    namespace: argocd-agent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-agent-go
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-go
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: argocd-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-agent-go
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-agent-go
+        app.kubernetes.io/component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: argocd-agent-go
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: go-service
+          image: quay.io/devtools_gitops/argocd-agent-go:latest
+          imagePullPolicy: Always
+          args:
+            - --addr=:8080
+            - --agent-url=http://argocd-agent-python:8081
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: GOMAXPROCS
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: argocd-agent-go
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-agent-go
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-go
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: argocd-agent-go

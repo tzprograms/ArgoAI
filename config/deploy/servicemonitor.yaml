@@ -1,0 +1,46 @@
+---
+# ServiceMonitor for Prometheus Operator to scrape Go service metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-agent-go
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-go
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: argocd-agent
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-agent-go
+  namespaceSelector:
+    matchNames:
+      - argocd-agent
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+# ServiceMonitor for Prometheus Operator to scrape Python service metrics
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-agent-python
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-python
+    app.kubernetes.io/component: agent
+    app.kubernetes.io/part-of: argocd-agent
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-agent-python
+  namespaceSelector:
+    matchNames:
+      - argocd-agent
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

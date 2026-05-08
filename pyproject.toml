@@ -1,0 +1,31 @@
+[project]
+name = "argocd-agent"
+version = "0.1.0"
+description = "AI diagnostic agent for ArgoCD applications using Google ADK"
+requires-python = ">=3.12"
+dependencies = [
+    "google-adk>=1.0.0",
+    "google-genai>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.34.0",
+    "sse-starlette>=2.0.0",
+    "httpx>=0.28.0",
+    "openai>=1.60.0",
+    "pydantic>=2.10.0",
+    "litellm>=1.60.0",
+    "sentence-transformers>=3.0.0",
+    "faiss-cpu>=1.9.0",
+    "prometheus-client>=0.21.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

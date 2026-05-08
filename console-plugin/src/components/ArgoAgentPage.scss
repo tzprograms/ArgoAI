@@ -1,0 +1,49 @@
+.argoai-log-stream {
+  font-family: var(--pf-t--global--font--family--mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.argoai-event {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--pf-t--global--border--color--default);
+
+  &__time {
+    color: var(--pf-t--global--text--color--subtle);
+    margin-right: 8px;
+    font-size: 0.75rem;
+  }
+
+  &__pre {
+    margin: 4px 0 0 0;
+    padding: 8px;
+    background: var(--pf-t--global--background--color--secondary--default);
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 150px;
+    overflow: auto;
+  }
+
+  &--loading {
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--pf-t--global--text--color--subtle);
+  }
+
+  code {
+    background: var(--pf-t--global--background--color--secondary--default);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.85em;
+  }
+}
+
+.argoai-diagnosis-result {
+  .pf-v6-c-description-list {
+    --pf-v6-c-description-list--m-horizontal__term--width: 120px;
+  }
+}

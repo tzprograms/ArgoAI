@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent
+    app.kubernetes.io/part-of: argocd-agent

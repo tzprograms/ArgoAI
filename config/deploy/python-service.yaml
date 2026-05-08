@@ -1,0 +1,152 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-agent-python
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-python
+    app.kubernetes.io/component: agent
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-agent-python
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-python
+    app.kubernetes.io/component: agent
+    app.kubernetes.io/part-of: argocd-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-agent-python
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-agent-python
+        app.kubernetes.io/component: agent
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: argocd-agent-python
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Extract RAG data from the pre-built Lightspeed BYOK image
+        - name: rag-init
+          image: quay.io/devtools_gitops/argocd_lightspeed_byok:v0.0.4
+          command: ["cp", "-r", "/rag/vector_db", "/rag-data/"]
+          volumeMounts:
+            - name: rag-data
+              mountPath: /rag-data
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+      containers:
+        - name: agent
+          image: quay.io/devtools_gitops/argocd-agent-python:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+          env:
+            - name: GO_SERVICE_URL
+              value: "http://argocd-agent-go:8080"
+            - name: RAG_INDEX_PATH
+              value: "/rag/vector_db"
+            - name: PORT
+              value: "8081"
+            # Optional: configure worker count based on CPU
+            - name: UVICORN_WORKERS
+              value: "1"
+          volumeMounts:
+            - name: rag-data
+              mountPath: /rag
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /.cache
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
+      volumes:
+        - name: rag-data
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: argocd-agent-python
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-agent-python
+  namespace: argocd-agent
+  labels:
+    app.kubernetes.io/name: argocd-agent-python
+    app.kubernetes.io/component: agent
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: argocd-agent-python

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-restricted-sa
+  namespace: default
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-rbac-issue
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-rbac-issue
+  template:
+    metadata:
+      labels:
+        app: demo-rbac-issue
+    spec:
+      serviceAccountName: demo-restricted-sa
+      containers:
+        - name: kubectl
+          image: bitnami/kubectl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                echo "Attempting to list secrets (should fail)..."
+                kubectl get secrets -n kube-system 2>&1 || true
+                echo "Attempting to list nodes (should fail)..."
+                kubectl get nodes 2>&1 || true
+                sleep 10
+              done

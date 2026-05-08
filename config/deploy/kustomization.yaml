@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd-agent
+
+resources:
+  - namespace.yaml
+  - go-service.yaml
+  - python-service.yaml
+  - servicemonitor.yaml
+  # NOTE: llm-keys-secret.yaml is NOT included here intentionally
+  # Create it separately with your actual API keys:
+  #   kubectl apply -f config/deploy/llm-keys-secret.yaml
+  # Or use BYOM mode (provide apiKey in each request)
+
+commonLabels:
+  app.kubernetes.io/part-of: argocd-agent
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: quay.io/devtools_gitops/argocd-agent-go
+    newTag: latest
+  - name: quay.io/devtools_gitops/argocd-agent-python
+    newTag: latest

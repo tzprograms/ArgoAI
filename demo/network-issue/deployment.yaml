@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-network-issue
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-network-issue
+  template:
+    metadata:
+      labels:
+        app: demo-network-issue
+    spec:
+      containers:
+        - name: curl-loop
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              while true; do
+                curl -s --connect-timeout 2 http://nonexistent-service.default.svc.cluster.local:8080 || echo "Connection failed"
+                sleep 5
+              done
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10

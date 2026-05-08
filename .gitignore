@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Go
+bin/
+/server
+!cmd/
+!cmd/server/
+!cmd/server/**
+
+# Node / Console Plugin
+node_modules/
+console-plugin/dist/
+console-plugin/yarn.lock
+gitops-console-plugin/
+
+# Reference repos (not our code)
+argo-cd/
+kagenti/
+
+# RAG data (extracted at runtime)
+rag_data/
+agent/rag/gitops-lightspeed-knowledge/
+agent/rag/lightspeed-rag-content/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Docker
+qdrant_data/
+
+# Env / secrets
+.env
+*.env
+*.env.*
+*.log
+*.key
+*.pem
+*.kubeconfig
+kubeconfig
+console.env
+
+# Local tooling / run output
+.tools/
+logs/
+
+# OS
+Thumbs.db
+
+# Cache
+.pytest_cache/
+.cursor/
+
+# Lock files (regenerated on install)
+uv.lock

@@ -1,0 +1,44 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies for FAISS and sentence-transformers
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files
+COPY pyproject.toml .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir .
+
+# Pre-download embedding model for air-gapped/restricted clusters
+# This avoids runtime downloads and works with read-only root filesystem
+ENV TRANSFORMERS_CACHE=/app/.cache \
+    HF_HOME=/app/.cache \
+    HF_HUB_CACHE=/app/.cache \
+    SENTENCE_TRANSFORMERS_HOME=/app/.cache \
+    RAG_MODEL_PATH=/app/.cache/sentence-transformers/all-mpnet-base-v2
+
+RUN mkdir -p /app/.cache && \
+    python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-mpnet-base-v2')" && \
+    chmod -R 755 /app/.cache
+
+# Copy application code
+COPY agent/ agent/
+
+# Create non-root user and set permissions
+RUN useradd -m -u 1000 agent && \
+    chown -R agent:agent /app
+
+USER agent
+
+# Runtime cache paths (these volumes should be mounted as emptyDir in K8s)
+ENV TRANSFORMERS_CACHE=/.cache \
+    HF_HOME=/.cache \
+    HF_HUB_CACHE=/.cache \
+    SENTENCE_TRANSFORMERS_HOME=/.cache
+
+EXPOSE 8081
+CMD ["python", "-m", "agent.main"]

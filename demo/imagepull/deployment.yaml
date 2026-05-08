@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-imagepull
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-imagepull
+  template:
+    metadata:
+      labels:
+        app: demo-imagepull
+    spec:
+      containers:
+        - name: bad-image
+          image: nginx:this-tag-does-not-exist-12345

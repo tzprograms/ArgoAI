@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-crashloop
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-crashloop
+  template:
+    metadata:
+      labels:
+        app: demo-crashloop
+    spec:
+      containers:
+        - name: crash
+          image: busybox:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Application starting..."
+              echo "ERROR: Database connection failed - ECONNREFUSED 10.0.0.1:5432"
+              echo "FATAL: Cannot connect to PostgreSQL"
+              exit 1

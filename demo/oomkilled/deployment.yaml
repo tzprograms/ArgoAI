@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-oomkilled
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-oomkilled
+  template:
+    metadata:
+      labels:
+        app: demo-oomkilled
+    spec:
+      containers:
+        - name: stress
+          image: polinux/stress
+          command: ["stress", "--vm", "1", "--vm-bytes", "256M"]
+          resources:
+            limits:
+              memory: "64Mi"

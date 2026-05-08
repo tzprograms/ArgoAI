@@ -1,0 +1,22 @@
+[
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "argoai-diagnose",
+      "perspective": "admin",
+      "section": "gitops-navigation-section",
+      "name": "ArgoAI",
+      "href": "/argoai"
+    }
+  },
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/argoai",
+      "component": {
+        "$codeRef": "ArgoAgentPage"
+      }
+    }
+  }
+]
